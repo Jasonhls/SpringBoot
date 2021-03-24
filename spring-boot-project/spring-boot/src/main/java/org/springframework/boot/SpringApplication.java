@@ -339,6 +339,10 @@ public class SpringApplication {
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
 		ConfigurationPropertySources.attach(environment);
+		/**
+		 * 通过执行遍历执行ApplicationListener的onApplicationEvent方法，比如会执行ConfigFileApplicationListener的onApplicationEvent方法，
+		 * 该方法会加载配置文件的属性
+		 */
 		listeners.environmentPrepared(environment);
 		bindToSpringApplication(environment);
 		if (!this.isCustomEnvironment) {

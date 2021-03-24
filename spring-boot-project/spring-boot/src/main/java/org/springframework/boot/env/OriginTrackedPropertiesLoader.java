@@ -75,11 +75,13 @@ class OriginTrackedPropertiesLoader {
 			Map<String, OriginTrackedValue> result = new LinkedHashMap<>();
 			StringBuilder buffer = new StringBuilder();
 			while (reader.read()) {
+				//读取key
 				String key = loadKey(buffer, reader).trim();
 				if (expandLists && key.endsWith("[]")) {
 					key = key.substring(0, key.length() - 2);
 					int index = 0;
 					do {
+						//读取value
 						OriginTrackedValue value = loadValue(buffer, reader, true);
 						put(result, key + "[" + (index++) + "]", value);
 						if (!reader.isEndOfLine()) {
@@ -89,6 +91,7 @@ class OriginTrackedPropertiesLoader {
 					while (!reader.isEndOfLine());
 				}
 				else {
+					//读取value
 					OriginTrackedValue value = loadValue(buffer, reader, false);
 					put(result, key, value);
 				}

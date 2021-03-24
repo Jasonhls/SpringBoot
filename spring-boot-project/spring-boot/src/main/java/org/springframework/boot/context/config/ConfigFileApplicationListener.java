@@ -163,6 +163,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
 		if (event instanceof ApplicationEnvironmentPreparedEvent) {
+			//准备环境的时候会调用这个方法，如果是Servlet，那么environment对象是StandardServletEnvironment对象
 			onApplicationEnvironmentPreparedEvent((ApplicationEnvironmentPreparedEvent) event);
 		}
 		if (event instanceof ApplicationPreparedEvent) {
@@ -175,6 +176,9 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 		postProcessors.add(this);
 		AnnotationAwareOrderComparator.sort(postProcessors);
 		for (EnvironmentPostProcessor postProcessor : postProcessors) {
+			/**
+			 * 如果是ConfigFileApplicationListener，会加载配置文件
+			 */
 			postProcessor.postProcessEnvironment(event.getEnvironment(), event.getSpringApplication());
 		}
 	}
@@ -185,6 +189,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 
 	@Override
 	public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+		//加载配置文件
 		addPropertySources(environment, application.getResourceLoader());
 	}
 
@@ -200,6 +205,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 	 * @see #addPostProcessors(ConfigurableApplicationContext)
 	 */
 	protected void addPropertySources(ConfigurableEnvironment environment, ResourceLoader resourceLoader) {
+		//将RandomValuePropertySource对象添加到environment的propertySources属性中
 		RandomValuePropertySource.addToEnvironment(environment);
 		new Loader(environment, resourceLoader).load();
 	}
@@ -305,6 +311,11 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 			this.environment = environment;
 			this.placeholdersResolver = new PropertySourcesPlaceholdersResolver(this.environment);
 			this.resourceLoader = (resourceLoader != null) ? resourceLoader : new DefaultResourceLoader();
+			/**
+			 * 这里会加载PropertySourceLoader的子类，PropertySourceLoader只有两个子类，
+			 * 一个是PropertiesPropertySourceLoader，负责加载后缀为properties、xml的配置文件
+			 * 一个是YamlPropertySourceLoader，负责加载后缀为yml、yaml的配置文件
+			 */
 			this.propertySourceLoaders = SpringFactoriesLoader.loadFactories(PropertySourceLoader.class,
 					getClass().getClassLoader());
 		}
@@ -324,6 +335,9 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 				this.processedProfiles.add(profile);
 			}
 			resetEnvironmentProfiles(this.processedProfiles);
+			/**
+			 * 加载配置文件的核心逻辑
+			 */
 			load(null, this::getNegativeProfileFilter, addToLoaded(MutablePropertySources::addFirst, true));
 			addLoadedPropertySources();
 		}
@@ -421,8 +435,10 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 		}
 
 		private void load(Profile profile, DocumentFilterFactory filterFactory, DocumentConsumer consumer) {
+			//getSearchLocations()默认返回的查找路径集合是classpath:./, classpath:./config/, file:./, file:./config/
 			getSearchLocations().forEach((location) -> {
 				boolean isFolder = location.endsWith("/");
+				//默认返回的searchName是application
 				Set<String> names = isFolder ? getSearchNames() : NO_SEARCH_NAMES;
 				names.forEach((name) -> load(location, name, profile, filterFactory, consumer));
 			});
@@ -430,18 +446,23 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 
 		private void load(String location, String name, Profile profile, DocumentFilterFactory filterFactory,
 				DocumentConsumer consumer) {
+			//如果name为空
 			if (!StringUtils.hasText(name)) {
+				//遍历PropertySourceLoader
 				for (PropertySourceLoader loader : this.propertySourceLoaders) {
+					//根据PropertySourceLoader的getExtension()方法返回的后缀与
 					if (canLoadFileExtension(loader, location)) {
 						load(loader, location, profile, filterFactory.getDocumentFilter(profile), consumer);
 						return;
 					}
 				}
 			}
+			//如果name不为空，这里的name为application
 			Set<String> processed = new HashSet<>();
 			for (PropertySourceLoader loader : this.propertySourceLoaders) {
 				for (String fileExtension : loader.getFileExtensions()) {
 					if (processed.add(fileExtension)) {
+						//location + name，比如classpath:./application，这里的入参fileExtension为.properties
 						loadForFileExtension(loader, location + name, "." + fileExtension, profile, filterFactory,
 								consumer);
 					}
@@ -472,6 +493,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 				}
 			}
 			// Also try the profile-specific section (if any) of the normal file
+			//这里prefix + fileExtension，比如classpath:./application.properties
 			load(loader, prefix + fileExtension, profile, profileFilter, consumer);
 		}
 
@@ -495,7 +517,11 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 					}
 					return;
 				}
+				//这里的name比如为：applicationConfig:[classpath:./application.properties]
 				String name = "applicationConfig: [" + location + "]";
+				/**
+				 * 加载配置文件核心逻辑
+				 */
 				List<Document> documents = loadDocuments(loader, name, resource);
 				if (CollectionUtils.isEmpty(documents)) {
 					if (this.logger.isTraceEnabled()) {
@@ -541,6 +567,9 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 			DocumentsCacheKey cacheKey = new DocumentsCacheKey(loader, resource);
 			List<Document> documents = this.loadDocumentsCache.get(cacheKey);
 			if (documents == null) {
+				/**
+				 * 调用PropertySourceLoader加载配置文件，比如PropertiesPropertySourceLoader或YamlPropertySourceLoader
+				 */
 				List<PropertySource<?>> loaded = loader.load(name, resource);
 				documents = asDocuments(loaded);
 				this.loadDocumentsCache.put(cacheKey, documents);

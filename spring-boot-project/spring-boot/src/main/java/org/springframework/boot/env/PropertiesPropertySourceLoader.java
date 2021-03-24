@@ -54,9 +54,11 @@ public class PropertiesPropertySourceLoader implements PropertySourceLoader {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private Map<String, ?> loadProperties(Resource resource) throws IOException {
 		String filename = resource.getFilename();
+		//配置文件以xml为后缀的加载逻辑
 		if (filename != null && filename.endsWith(XML_FILE_EXTENSION)) {
 			return (Map) PropertiesLoaderUtils.loadProperties(resource);
 		}
+		//配置文件以properties为后缀的加载逻辑
 		return new OriginTrackedPropertiesLoader(resource).load();
 	}
 

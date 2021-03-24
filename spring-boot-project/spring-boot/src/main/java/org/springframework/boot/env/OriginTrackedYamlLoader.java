@@ -73,6 +73,7 @@ class OriginTrackedYamlLoader extends YamlProcessor {
 
 	public List<Map<String, Object>> load() {
 		final List<Map<String, Object>> result = new ArrayList<>();
+		//process方法就是解析yml后缀类型配置文件的核心逻辑
 		process((properties, map) -> result.add(getFlattenedMap(map)));
 		return result;
 	}
