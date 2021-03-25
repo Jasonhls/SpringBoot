@@ -308,6 +308,9 @@ public class SpringApplication {
 			context = createApplicationContext();
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
 					new Class[] { ConfigurableApplicationContext.class }, context);
+			/**
+			 * 这里会解析配置文件信息
+			 */
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
 			refreshContext(context);
 			afterRefresh(context, applicationArguments);
@@ -369,6 +372,9 @@ public class SpringApplication {
 		context.setEnvironment(environment);
 		postProcessApplicationContext(context);
 		applyInitializers(context);
+		/**
+		 * 这里会解析配置文件信息，通过执行ConfigFileApplicationListener的onApplicationEvent方法，最后解析完后，会存储在
+		 */
 		listeners.contextPrepared(context);
 		if (this.logStartupInfo) {
 			logStartupInfo(context.getParent() == null);

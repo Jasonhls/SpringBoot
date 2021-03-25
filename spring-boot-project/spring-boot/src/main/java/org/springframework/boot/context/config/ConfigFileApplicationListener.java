@@ -178,6 +178,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 		for (EnvironmentPostProcessor postProcessor : postProcessors) {
 			/**
 			 * 如果是ConfigFileApplicationListener，会加载配置文件
+			 * 这里把spring的environment对象和spring容器对象作为入参传进去
 			 */
 			postProcessor.postProcessEnvironment(event.getEnvironment(), event.getSpringApplication());
 		}
@@ -189,7 +190,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 
 	@Override
 	public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-		//加载配置文件
+		//加载配置文件，这里把spring的environment对象和spring容器对象作为入参传进去
 		addPropertySources(environment, application.getResourceLoader());
 	}
 
@@ -207,6 +208,9 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 	protected void addPropertySources(ConfigurableEnvironment environment, ResourceLoader resourceLoader) {
 		//将RandomValuePropertySource对象添加到environment的propertySources属性中
 		RandomValuePropertySource.addToEnvironment(environment);
+		/**
+		 * 将传进来的spring的environment作为入参，传给Loader对象的属性environment。
+		 */
 		new Loader(environment, resourceLoader).load();
 	}
 
@@ -331,6 +335,14 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 				if (profile != null && !profile.isDefaultProfile()) {
 					addProfileToEnvironment(profile.getName());
 				}
+				/**
+				 * 加载配置文件并将配置文件存储在this.loaded属性中，key为profile，value为MutablePropertySource对象，
+				 * 配置信息存储在MutablePropertySources的属性propertySourceList中。
+				 * 这里的addToLoaded方法的第一个入参传入的是函数式接口BiConsumer，具体的实现是为MutablePropertySources::addLast，
+				 * 即MutablePropertySources的addLast方法（该方法也有两个入参，一个是MutablePropertySources对象，一个是PropertySource）
+				 * 这里的addToLoaded方法返回的是DocumentConsumer（函数式接口）的实现（相当于实现类），里面包含了具体的方法逻辑
+				 *
+				 */
 				load(profile, this::getPositiveProfileFilter, addToLoaded(MutablePropertySources::addLast, false));
 				this.processedProfiles.add(profile);
 			}
@@ -339,6 +351,10 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 			 * 加载配置文件的核心逻辑
 			 */
 			load(null, this::getNegativeProfileFilter, addToLoaded(MutablePropertySources::addFirst, true));
+			/**
+			 * 上面加载的配置文件是存储在ConfigFileApplicationListener.Loader类的属性loaded中
+			 * 下面这里是把上面加载的配置文件赋值给spring的environment的属性propertySources中
+			 */
 			addLoadedPropertySources();
 		}
 
@@ -418,8 +434,16 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 					&& this.environment.acceptsProfiles(Profiles.of(document.getProfiles())));
 		}
 
+		/**
+		 * 入参addMethod属于BiConsumer，这里的入参使用了函数式接口
+		 * @param addMethod
+		 * @param checkForExisting
+		 * @return
+		 */
 		private DocumentConsumer addToLoaded(BiConsumer<MutablePropertySources, PropertySource<?>> addMethod,
 				boolean checkForExisting) {
+			//函数式编程接口，下面这个部分返回一个DocumentConsumer的实现（相当于实现类）。
+			//其中小括号中的profile和document属于两个入参，大括号里面属于方法体
 			return (profile, document) -> {
 				if (checkForExisting) {
 					for (MutablePropertySources merged : this.loaded.values()) {
@@ -428,8 +452,16 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 						}
 					}
 				}
+				//java8中map.computeIfAbsent("aaa", (k) -> new Object())，表示如果map中key为aaa对应的value不为空，直接返回，
+				//value为空，则创建一个新对象作为value，key还是aaa，并put到map中
 				MutablePropertySources merged = this.loaded.computeIfAbsent(profile,
 						(k) -> new MutablePropertySources());
+				/**
+				 *这里的addMethod的方法体内容为MutablePropertySources::addLast，即执行MutablePropertySources(这里是5.3.5的包)的addLast方法，
+				 * java8可以这样使用，然后addMethod执行accept方法，这里的addMethod属于函数式接口，
+				 * accept方法有两个入参，下面这里的第一个入参是MutablePropertySources，这里的第二个入参是PropertySource。
+				 * addLast方法是将document中的propertySource添加到MutablePropertySources的属性propertySourceList中
+				 */
 				addMethod.accept(merged, document.getPropertySource());
 			};
 		}
@@ -520,7 +552,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 				//这里的name比如为：applicationConfig:[classpath:./application.properties]
 				String name = "applicationConfig: [" + location + "]";
 				/**
-				 * 加载配置文件核心逻辑
+				 * 加载配置文件核心逻辑，并把配置存储在document中
 				 */
 				List<Document> documents = loadDocuments(loader, name, resource);
 				if (CollectionUtils.isEmpty(documents)) {
@@ -541,6 +573,10 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 				}
 				Collections.reverse(loaded);
 				if (!loaded.isEmpty()) {
+					/**
+					 * 下面这里开始使用consumer（属于DocumentConsumer，属于函数式接口），执行consumer的accept方法，传入了两个参数，
+					 * 一个是profile，一个是document（它的属性propertySource用于存储解析出来的配置文件）
+					 */
 					loaded.forEach((document) -> consumer.accept(profile, document));
 					if (this.logger.isDebugEnabled()) {
 						StringBuilder description = getDescription("Loaded config file ", location, resource, profile);
@@ -688,6 +724,10 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 		}
 
 		private void addLoadedPropertySources() {
+			/**
+			 * 比如这里的environment为StandardServletEnvironment，获取其父类AbstractEnvironment的属性propertySources
+			 * （这个属性属于MutablePropertySources，专门用于存放配置文件的属性的）
+			 */
 			MutablePropertySources destination = this.environment.getPropertySources();
 			List<MutablePropertySources> loaded = new ArrayList<>(this.loaded.values());
 			Collections.reverse(loaded);
@@ -696,6 +736,9 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 			for (MutablePropertySources sources : loaded) {
 				for (PropertySource<?> source : sources) {
 					if (added.add(source.getName())) {
+						/**
+						 * 把this.loaded中存储的解析出来的配置信息添加到environment的父类属性propertySources中
+						 */
 						addLoadedPropertySource(destination, lastAdded, source);
 						lastAdded = source.getName();
 					}
@@ -874,6 +917,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 
 	/**
 	 * Consumer used to handle a loaded {@link Document}.
+	 * java8开始的函数式编程接口，具体可以百度学习
 	 */
 	@FunctionalInterface
 	private interface DocumentConsumer {
