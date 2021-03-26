@@ -64,6 +64,9 @@ class ConfigurationPropertiesBinder {
 
 	ConfigurationPropertiesBinder(ApplicationContext applicationContext, String validatorBeanName) {
 		this.applicationContext = applicationContext;
+		/**
+		 * 把spring上下文传给PropertySourcesDeducer对象，并获取spring上下文中的environment的PropertySources(存放在ConfigFileApplicationListener中解析出来的配置信息的)
+		 */
 		this.propertySources = new PropertySourcesDeducer(applicationContext).getPropertySources();
 		this.configurationPropertiesValidator = getConfigurationPropertiesValidator(applicationContext,
 				validatorBeanName);
@@ -75,6 +78,10 @@ class ConfigurationPropertiesBinder {
 		Assert.state(annotation != null, () -> "Missing @ConfigurationProperties on " + target);
 		List<Validator> validators = getValidators(target);
 		BindHandler bindHandler = getBindHandler(annotation, validators);
+		/**
+		 *当前的this为ConfigurationPropertiesBinder对象，getBinder()方法返回的Binder对象的属性propertySources
+		 * 等于spring容器上下文中存放配置信息的environment中的propertySources。
+		 */
 		getBinder().bind(annotation.prefix(), target, bindHandler);
 	}
 
@@ -132,6 +139,8 @@ class ConfigurationPropertiesBinder {
 
 	private Binder getBinder() {
 		if (this.binder == null) {
+			//当前的this为ConfigurationPropertiesBinder对象，第一个入参是ConfigurationPropertiesBinder的属性propertySources，
+			//即把ConfigurationPropertiesBinder的属性propertySources赋值给Binder对象的propertySources
 			this.binder = new Binder(getConfigurationPropertySources(), getPropertySourcesPlaceholdersResolver(),
 					getConversionService(), getPropertyEditorInitializer());
 		}
@@ -139,6 +148,7 @@ class ConfigurationPropertiesBinder {
 	}
 
 	private Iterable<ConfigurationPropertySource> getConfigurationPropertySources() {
+		//this.propertySources即ConfigurationPropertiesBinder的属性propertySources，由之前创建ConfigurationPropertiesBinder对象的时候赋值进去的
 		return ConfigurationPropertySources.from(this.propertySources);
 	}
 

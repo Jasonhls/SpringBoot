@@ -41,6 +41,9 @@ public final class OriginTrackedMapPropertySource extends MapPropertySource impl
 
 	@Override
 	public Object getProperty(String name) {
+		/**
+		 * 获取key对应的value值，OriginTrackedMapPropertySource的父类属性source中存放着配置文件信息的key与value的键值对
+		 */
 		Object value = super.getProperty(name);
 		if (value instanceof OriginTrackedValue) {
 			return ((OriginTrackedValue) value).getValue();

@@ -245,6 +245,10 @@ public class Binder {
 
 	private <T> Object bindObject(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler,
 			Context context, boolean allowRecursiveBinding) {
+		/**
+		 * 这里的ConfigurationPropertyName对象中属性string就是配置文件中的key，比如connection.username，
+		 * 然后寻找ConfigurationProperty，这里面会获取key为connection.username对应的值。
+		 */
 		ConfigurationProperty property = findProperty(name, context);
 		if (property == null && containsNoDescendantOf(context.getSources(), name)) {
 			return null;
@@ -298,6 +302,12 @@ public class Binder {
 			return null;
 		}
 		for (ConfigurationPropertySource source : context.getSources()) {
+			//这里的source为SpringIterableConfigurationPropertySource
+			/**
+			 * 这里的source为SpringIterableConfigurationPropertySource，并且它的父类属性propertySource为OriginTrackedMapPropertySource，
+			 * 就会开始把配置文件中的value赋给key，这里的name（即ConfigurationPropertyName对象）中的属性string即为key，
+			 * key与value会封装在ConfigurationProperty对象中并返回
+			 */
 			ConfigurationProperty property = source.getConfigurationProperty(name);
 			if (property != null) {
 				return property;
@@ -319,6 +329,7 @@ public class Binder {
 		if (containsNoDescendantOf(context.getSources(), name) || isUnbindableBean(name, target, context)) {
 			return null;
 		}
+		//定义一个BeanPropertyBinder接口的实现（相当于实现类）
 		BeanPropertyBinder propertyBinder = (propertyName, propertyTarget) -> bind(name.append(propertyName),
 				propertyTarget, handler, context, false);
 		Class<?> type = target.getType().resolve(Object.class);
@@ -326,6 +337,7 @@ public class Binder {
 			return null;
 		}
 		return context.withBean(type, () -> {
+			//bind的核心逻辑
 			Stream<?> boundBeans = BEAN_BINDERS.stream().map((b) -> b.bind(name, target, context, propertyBinder));
 			return boundBeans.filter(Objects::nonNull).findFirst().orElse(null);
 		});

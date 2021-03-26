@@ -73,6 +73,10 @@ public class ConfigurationPropertiesBindingPostProcessor
 		// it causes eager factory bean initialization
 		this.beanFactoryMetadata = this.applicationContext.getBean(ConfigurationBeanFactoryMetadata.BEAN_NAME,
 				ConfigurationBeanFactoryMetadata.class);
+		/**
+		 * 调用ConfigurationPropertiesBinder的构造方法创建ConfigurationPropertiesBinder对象，
+		 * 会把spring容器中存放配置信息的PropertySources封装在ConfigurationPropertiesBinder对象的属性propertySources中
+		 */
 		this.configurationPropertiesBinder = new ConfigurationPropertiesBinder(this.applicationContext,
 				VALIDATOR_BEAN_NAME);
 	}
@@ -98,6 +102,7 @@ public class ConfigurationPropertiesBindingPostProcessor
 				: new Annotation[] { annotation };
 		Bindable<?> target = Bindable.of(type).withExistingValue(bean).withAnnotations(annotations);
 		try {
+			//调用ConfigurationPropertiesBinder的bind方法，调用方为this.configurationPropertiesBinder
 			this.configurationPropertiesBinder.bind(target);
 		}
 		catch (Exception ex) {

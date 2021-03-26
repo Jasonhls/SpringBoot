@@ -108,12 +108,18 @@ class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 
 	private ConfigurationProperty find(PropertyMapping mapping) {
 		String propertySourceName = mapping.getPropertySourceName();
+		/**
+		 * 根据配置文件的key获取对应的值
+		 * 这里getPropertySource()，获取的为OriginTrackedMapPropertySource对象，
+		 * 根据配置文件信息的key，去获取对应的value值，OriginTrackedMapPropertySource对象的父类属性source中存放着配置文件信息的key与value的键值对
+		 */
 		Object value = getPropertySource().getProperty(propertySourceName);
 		if (value == null) {
 			return null;
 		}
 		ConfigurationPropertyName configurationPropertyName = mapping.getConfigurationPropertyName();
 		Origin origin = PropertySourceOrigin.get(this.propertySource, propertySourceName);
+		//返回一个ConfigurationProperty对象
 		return ConfigurationProperty.of(configurationPropertyName, value, origin);
 	}
 
@@ -141,6 +147,7 @@ class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 		Assert.notNull(source, "Source must not be null");
 		PropertyMapper mapper = getPropertyMapper(source);
 		if (isFullEnumerable(source)) {
+			//把传进来的OriginTrackedMapPropertySource（包含有解析的配置文件信息）封装到SpringIterableConfigurationPropertySource对象中
 			return new SpringIterableConfigurationPropertySource((EnumerablePropertySource<?>) source, mapper);
 		}
 		return new SpringConfigurationPropertySource(source, mapper, getContainsDescendantOfForSource(source));

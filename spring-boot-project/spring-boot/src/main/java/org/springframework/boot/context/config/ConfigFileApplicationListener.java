@@ -604,9 +604,13 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 			List<Document> documents = this.loadDocumentsCache.get(cacheKey);
 			if (documents == null) {
 				/**
-				 * 调用PropertySourceLoader加载配置文件，比如PropertiesPropertySourceLoader或YamlPropertySourceLoader
+				 * 调用PropertySourceLoader加载配置文件，比如PropertiesPropertySourceLoader或YamlPropertySourceLoader，
+				 * 解析出来的配置信息存储在loaded中
 				 */
 				List<PropertySource<?>> loaded = loader.load(name, resource);
+				/**
+				 * 将上一步解析出来的配置信息封装到Document集合当中
+				 */
 				documents = asDocuments(loaded);
 				this.loadDocumentsCache.put(cacheKey, documents);
 			}
@@ -618,6 +622,13 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 				return Collections.emptyList();
 			}
 			return loaded.stream().map((propertySource) -> {
+				/**
+				 * 传进来的loaded已经包含了解析过的配置信息了，遍历loaded（是一个PropertySource集合）
+				 * 这里会调用ConfigurationPropertySources.from(propertySource)方法，传入的propertySource包含配置文件信息，
+				 * 被封装在SpringIterableConfigurationPropertySource对象中，并返回成Iterable<ConfigurationPropertySource>集合，
+				 * 作为构造Binder对象的第一个入参。后面在解析@ConfigurationProperties的注解的时候会用到，解析@ConfigurationProperties注解
+				 * 的逻辑主要是由ConfigurationPropertiesBindingPostProcessor处理器完成。
+				 */
 				Binder binder = new Binder(ConfigurationPropertySources.from(propertySource),
 						this.placeholdersResolver);
 				return new Document(propertySource, binder.bind("spring.profiles", STRING_ARRAY).orElse(null),
